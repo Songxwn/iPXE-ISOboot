@@ -1,0 +1,10 @@
+/dist/
+*.exe
+ipxe-isoboot
+ipxe-isoboot-*
+/data/
+*.tmp
+*.log
+.idea/
+.vscode/
+.DS_Store
