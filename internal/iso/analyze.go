@@ -74,17 +74,31 @@ func Analyze(path string) (*Info, error) {
 	}
 
 	// --- Linux 探测 ---
-	// 常见内核位置
+	// 常见内核位置。注意顺序：Debian/RHEL 的网络安装内核优先于光盘 isolinux 内核。
 	kernelCandidates := []string{
-		"/casper/vmlinuz", "/live/vmlinuz", "/boot/vmlinuz",
-		"/isolinux/vmlinuz", "/images/pxeboot/vmlinuz",
-		"/arch/boot/x86_64/vmlinuz-linux", "/vmlinuz",
+		"/install.amd/vmlinuz",         // Debian netinst (网络安装器)
+		"/install.a64/vmlinuz",         // Debian arm64
+		"/install/vmlinuz",             // Debian 部分变体
+		"/images/pxeboot/vmlinuz",      // RHEL/CentOS/Rocky (网络安装)
+		"/casper/vmlinuz",              // Ubuntu live
+		"/live/vmlinuz",                // Debian/其它 live
+		"/boot/vmlinuz",
+		"/isolinux/vmlinuz",
+		"/arch/boot/x86_64/vmlinuz-linux",
+		"/vmlinuz",
 		"/boot/x86_64/loader/linux",
 	}
 	initrdCandidates := []string{
-		"/casper/initrd", "/live/initrd.img", "/boot/initrd.img",
-		"/isolinux/initrd.img", "/images/pxeboot/initrd.img",
-		"/arch/boot/x86_64/initramfs-linux.img", "/initrd.img",
+		"/install.amd/initrd.gz",       // Debian netinst
+		"/install.a64/initrd.gz",       // Debian arm64
+		"/install/initrd.gz",
+		"/images/pxeboot/initrd.img",   // RHEL/CentOS/Rocky
+		"/casper/initrd",               // Ubuntu live
+		"/live/initrd.img",
+		"/boot/initrd.img",
+		"/isolinux/initrd.img",
+		"/arch/boot/x86_64/initramfs-linux.img",
+		"/initrd.img",
 		"/boot/x86_64/loader/initrd",
 	}
 	for _, c := range kernelCandidates {

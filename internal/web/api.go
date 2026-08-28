@@ -397,12 +397,19 @@ func (s *Server) extractFiles(isoPath, dest string, files []string) (map[string]
 }
 
 // linuxAppend 依据发行版给出常见的网络安装内核参数。
+//
+// 说明：不同发行版指向 ISO 源的参数机制不同，容易踩坑：
+//   - Debian 网络安装器(install.amd)：用 fetch= 让 initrd 下载整个 ISO 后从中安装；
+//     用 url= 是错误的（url= 指官方镜像目录，会导致找不到安装介质）。
+//   - Ubuntu(casper) live：用 url= 指向 ISO 文件。
+//   - RHEL 系：inst.repo= 指向 ISO 的 HTTP 地址（dracut 会挂载）。
 func linuxAppend(distro, isoURL string) string {
 	switch distro {
 	case "ubuntu":
 		return "boot=casper url=" + isoURL + " ip=dhcp ---"
 	case "debian":
-		return "url=" + isoURL + " ip=dhcp ---"
+		// fetch= 让 debian-installer 的 initrd 下载 ISO 并从中安装
+		return "auto=true priority=critical fetch=" + isoURL + " ip=dhcp ---"
 	case "centos", "rocky", "almalinux", "fedora":
 		return "inst.repo=" + isoURL + " ip=dhcp"
 	case "opensuse":
