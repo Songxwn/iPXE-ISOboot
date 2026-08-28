@@ -223,12 +223,29 @@ sudo dnf install -y xorriso mtools syslinux
 
 “引导 ISO”页顶部会显示工具链是否就绪；缺失时会给出安装提示。
 
-## 一键加入启动菜单
+## 一键加入启动菜单（借鉴 Ventoy 的引导策略）
 
-在“ISO 管理”页每个 ISO 都有 **一键加入菜单** 按钮：自动分析镜像类型并创建启动项——
-- Linux：自动提取内核/initrd 并填入常见网络安装参数
-- Windows / ESXi / 无法识别：以 `sanboot` 直挂 ISO
-随后可在“启动菜单”中进一步微调。
+在“ISO 管理”页每个 ISO 都有 **一键加入菜单** 按钮。识别引擎内置发行版规则库
+（Ubuntu / Debian / Kali / Mint / RHEL 系 / Fedora / openSUSE / Arch / Alpine / Manjaro /
+Proxmox / pfSense / TrueNAS / Clonezilla / GParted / Memtest 等），会**自动选择最合适的引导方式**：
+
+| 识别结果 | 自动采用的引导方式 |
+|---------|-----------------|
+| Live / 工具类 ISO | **`sanboot` 直挂 ISO**（像 Ventoy 一样"丢进去就启动"，无需提取内核） |
+| 安装器类（Debian netinst / RHEL 系等） | 提取 kernel+initrd，自动填网络安装参数 |
+| Windows | `wimboot` 引导 WinPE |
+| VMware ESXi | mboot multiboot |
+| Memtest 等 | `memdisk` 整盘入内存 |
+| 无法识别 | 默认 `sanboot` 直挂尝试 |
+
+分析页会显示识别名称、是否 live、推荐引导方式。加入后可在“启动菜单”里进一步微调
+（比如切换引导方式、勾选“加载到内存 toram”）。
+
+> **与 Ventoy 的技术差异（重要）**：Ventoy 是本地 U 盘方案，靠本地磁盘 + GRUB2 loopback
+> 实现近乎万能的 ISO 兼容。本项目是**网络 PXE**，客户端没有本地 ISO，只能用 iPXE 的
+> `sanboot`（把远程 ISO 当 SAN 光盘挂载）等网络手段。因此对多数 Linux live/工具盘可直挂启动，
+> 但个别强依赖本地光驱的安装器（尤其某些 Windows/商业系统）在纯网络下仍需 kernel+initrd 或
+> wimboot 方式——这是网络引导的协议限制，非本项目缺陷。
 
 ## 命令行参数
 

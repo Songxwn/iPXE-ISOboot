@@ -230,9 +230,16 @@ function renderAnalyze(name, info) {
     `<label><input type="checkbox" class="exfile" value="${f}"
       ${(f === info.kernel || f === info.initrd) ? 'checked' : ''}> ${f}</label>`
   ).join('');
+  const methodLabel = {
+    sanboot: 'sanboot 直挂 (推荐, 免提取)', linux: 'kernel+initrd 引导',
+    windows: 'wimboot', esxi: 'ESXi mboot', memdisk: 'memdisk 整盘入内存(BIOS)'
+  }[info.boot_method] || info.boot_method || '-';
   box.innerHTML = `
     <h3>分析结果：${name}</h3>
-    <p>类型：<span class="tag">${info.kind}</span> 发行版：<b>${info.distro || '-'}</b></p>
+    <p>识别：<b>${info.display || info.distro || '-'}</b>
+       <span class="tag">${info.kind}</span>
+       ${info.is_live ? '<span class="tag">live</span>' : ''}</p>
+    <p>推荐引导方式：<b>${methodLabel}</b></p>
     <p>探测内核：<code>${info.kernel || '未找到'}</code></p>
     <p>探测 initrd：<code>${info.initrd || '未找到'}</code></p>
     <p style="color:var(--muted)">${info.note || ''}</p>
