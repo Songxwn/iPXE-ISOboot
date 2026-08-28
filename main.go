@@ -62,6 +62,7 @@ func main() {
 			if sip == "" {
 				sip = netif.LocalIPFor(nil).String()
 			}
+			log.Printf("[bootfiles] 生成 GRUB2 网络镜像，服务器地址 %s:%d", sip, cfg.HTTPPort)
 			prefix := fmt.Sprintf("(http,%s:%d)/grub", sip, cfg.HTTPPort)
 			st := bootfiles.EnsureGRUB(filepath.Join(cfg.TFTPRoot(), "grub"), prefix)
 			if !st.HasEFI && !st.HasBIOS {

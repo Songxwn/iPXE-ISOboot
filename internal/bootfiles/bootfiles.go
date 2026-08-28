@@ -93,8 +93,14 @@ func EnsureGRUB(grubDir, serverPrefix string) GrubStatus {
 
 	// 写入一个引导用的内嵌 grub.cfg：设置 prefix 后加载真正的 grub.cfg。
 	embedCfg := filepath.Join(grubDir, "embed.cfg")
+	// 内嵌启动脚本：GRUB 由 iPXE chainload 起来后，网络设备尚未初始化，
+	// 必须先加载网络模块并执行 DHCP，再去 HTTP 拉取真正的 grub.cfg。
+	// 否则 GRUB 找不到配置会掉进命令行（正是 UEFI 下看到的现象）。
 	os.WriteFile(embedCfg, []byte(
-		"set prefix="+serverPrefix+"\n"+
+		"insmod part_gpt\ninsmod part_msdos\ninsmod net\ninsmod efinet\n"+
+			"insmod http\ninsmod tftp\ninsmod normal\ninsmod linux\ninsmod linuxefi\n"+
+			"set prefix="+serverPrefix+"\n"+
+			"if [ -z \"${net_default_ip}\" ]; then net_bootp; fi\n"+
 			"configfile "+serverPrefix+"/grub.cfg\n"), 0o644)
 
 	// EFI x64
