@@ -269,7 +269,7 @@ function onTypeChange() {
 
 function openEntryEditor() {
   document.getElementById('entryModalTitle').textContent = '新增启动项';
-  ['eTitle','eKernel','eInitrd','eAppend','eBCD','eBootSDI','eBootWIM','eWinExtras',
+  ['eTitle','eKernel','eInitrd','eAppend','eBootmgr','eBCD','eBootSDI','eBootWIM','eWinExtras',
    'eMbootC32','eMbootEFI','eBootCFG','eSanURL','eScript'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('eWimboot').value = '/files/tftp/wimboot';
   document.getElementById('eOrder').value = 0;
@@ -293,6 +293,7 @@ function editEntry(json) {
   document.getElementById('eInitrd').value = e.initrd || '';
   document.getElementById('eAppend').value = e.append || '';
   document.getElementById('eWimboot').value = e.wimboot || '/files/tftp/wimboot';
+  document.getElementById('eBootmgr').value = e.bootmgr || '';
   document.getElementById('eBCD').value = e.bcd || '';
   document.getElementById('eBootSDI').value = e.boot_sdi || '';
   document.getElementById('eBootWIM').value = e.boot_wim || '';
@@ -320,6 +321,7 @@ async function saveEntry() {
     initrd: document.getElementById('eInitrd').value,
     append: document.getElementById('eAppend').value,
     wimboot: document.getElementById('eWimboot').value,
+    bootmgr: document.getElementById('eBootmgr').value,
     bcd: document.getElementById('eBCD').value,
     boot_sdi: document.getElementById('eBootSDI').value,
     boot_wim: document.getElementById('eBootWIM').value,

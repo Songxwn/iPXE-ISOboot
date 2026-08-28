@@ -38,9 +38,10 @@ type Entry struct {
 
 	// Windows
 	Wimboot   string `json:"wimboot,omitempty"`   // wimboot 路径（一般固定 /files/tftp/wimboot）
-	BCD       string `json:"bcd,omitempty"`
-	BootSDI   string `json:"boot_sdi,omitempty"`
-	BootWIM   string `json:"boot_wim,omitempty"`
+	Bootmgr   string `json:"bootmgr,omitempty"`   // bootmgr（ISO 根 /bootmgr）
+	BCD       string `json:"bcd,omitempty"`       // /boot/bcd
+	BootSDI   string `json:"boot_sdi,omitempty"`  // /boot/boot.sdi
+	BootWIM   string `json:"boot_wim,omitempty"`  // /sources/boot.wim
 	WinExtras string `json:"win_extras,omitempty"` // 额外 wimboot 行（可选）
 
 	// ESXi

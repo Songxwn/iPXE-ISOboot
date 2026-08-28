@@ -339,9 +339,23 @@ func (s *Server) handleQuickAdd(w http.ResponseWriter, r *http.Request) {
 		e.Append = linuxAppend(info.Distro, s.baseURL(r)+isoURL)
 
 	case iso.KindWindows:
-		// Windows：以 sanboot 直挂 ISO（最省事，兼容性好）
-		e.Type = menu.TypeSanBoot
-		e.SanURL = isoURL
+		// Windows：用 wimboot 引导（sanboot 直挂 ISO 在 UEFI 下会失败）。
+		// 从 ISO 提取 bootmgr / boot/bcd / boot/boot.sdi / sources/boot.wim。
+		winFiles := []string{"/bootmgr", "/boot/bcd", "/boot/boot.sdi", "/sources/boot.wim"}
+		extracted, err := s.extractFiles(path, dest, winFiles)
+		if err != nil || extracted["/sources/boot.wim"] == "" {
+			// 提取失败则退回 sanboot（并在标题标注，供手动排查）
+			e.Type = menu.TypeSanBoot
+			e.SanURL = isoURL
+			e.Title = title + " (Windows/直挂-需确认)"
+			break
+		}
+		e.Type = menu.TypeWindows
+		e.Wimboot = "/files/tftp/wimboot"
+		e.Bootmgr = extracted["/bootmgr"]
+		e.BCD = extracted["/boot/bcd"]
+		e.BootSDI = extracted["/boot/boot.sdi"]
+		e.BootWIM = extracted["/sources/boot.wim"]
 		e.Title = title + " (Windows)"
 
 	case iso.KindESXi:

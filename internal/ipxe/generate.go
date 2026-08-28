@@ -113,7 +113,11 @@ func windowsScript(e *menu.Entry) string {
 		wimboot = "/files/tftp/wimboot"
 	}
 	b.WriteString("kernel " + url("${base}", wimboot) + " gui\n")
-	// wimboot 需要 bootmgr / bcd / boot.sdi / boot.wim
+	// wimboot 通过多条 initrd 载入各文件，文件名（第二参数）必须精确匹配。
+	// 顺序建议：bootmgr、BCD、boot.sdi、boot.wim。
+	if e.Bootmgr != "" {
+		b.WriteString("initrd " + url("${base}", e.Bootmgr) + " bootmgr\n")
+	}
 	if e.BCD != "" {
 		b.WriteString("initrd " + url("${base}", e.BCD) + " BCD\n")
 	}
