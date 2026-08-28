@@ -114,7 +114,7 @@ sudo systemctl status ipxe-isoboot
 | 类型 | 说明 | 关键字段 |
 |------|------|---------|
 | `linux` | 通用 Linux：加载 kernel + initrd | Kernel、Initrd、内核参数(append) |
-| `windows` | wimboot 引导 WinPE/安装镜像 | wimboot、BCD、boot.sdi、boot.wim |
+| `windows` | wimboot 引导 WinPE/安装镜像 | wimboot、bootmgr、BCD、boot.sdi、boot.wim |
 | `esxi` | VMware ESXi multiboot | mboot.c32/mboot.efi、boot.cfg |
 | `sanboot` | iPXE 直挂 ISO | ISO URL |
 | `custom` | 自定义 iPXE 脚本片段 | 原始脚本 |
@@ -132,6 +132,33 @@ CentOS/Rocky：
 ```
 inst.repo=http://<IP>:8081/files/iso/rocky.iso ip=dhcp
 ```
+
+### Windows 装机说明（重要）
+
+**Windows 安装 ISO 不能用 `sanboot` 直挂**——UEFI 下会报 `Boot from SAN device failed`（错误码 7f222091），
+BIOS 下即使挂上，WinPE 启动后也会丢失光盘连接。正确方式是 **wimboot**。
+
+对 Windows ISO 点击“一键加入菜单”会自动：
+1. 从 ISO 提取 `bootmgr`、`boot/bcd`、`boot/boot.sdi`、`sources/boot.wim`
+2. 创建 `windows` 类型启动项，用 wimboot 引导进入 **WinPE**
+
+生成的 iPXE 脚本形如：
+
+```
+kernel http://<IP>:8081/files/tftp/wimboot
+initrd http://<IP>:8081/files/extract/win/bootmgr        bootmgr
+initrd http://<IP>:8081/files/extract/win/boot/bcd       BCD
+initrd http://<IP>:8081/files/extract/win/boot/boot.sdi  boot.sdi
+initrd http://<IP>:8081/files/extract/win/sources/boot.wim boot.wim
+boot
+```
+
+> **进入 WinPE 后如何完成安装**：wimboot 只把你带进 WinPE。要真正装系统，
+> WinPE 里还需要访问完整安装源（`sources/install.wim` 等）。两种做法：
+> - 用 SMB 共享整个 ISO 内容，WinPE 中 `net use` 挂载后运行 `setup.exe`；
+> - 或用 HTTP 提供 ISO，WinPE 中用脚本挂载。
+>
+> 若只需 WinPE 环境（维护/PE 工具），到这一步即可使用。
 
 ## 选择 DHCP 监听网卡
 
