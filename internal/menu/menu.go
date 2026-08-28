@@ -17,6 +17,7 @@ const (
 	TypeWindows  OSType = "windows"  // Windows：wimboot + bcd/boot.sdi/wim
 	TypeESXi     OSType = "esxi"     // VMware ESXi：mboot.c32/mboot.efi + boot.cfg
 	TypeSanBoot  OSType = "sanboot"  // 直接 sanboot ISO（memdisk/iso 直挂）
+	TypeMemdisk  OSType = "memdisk"  // 整个 ISO 下载到内存当虚拟光驱（仅 BIOS）
 	TypeCustom   OSType = "custom"   // 用户自定义 iPXE 脚本片段
 )
 
@@ -35,6 +36,8 @@ type Entry struct {
 	Kernel string `json:"kernel,omitempty"` // 相对 HTTP 根的路径，如 /files/extract/ubuntu/casper/vmlinuz
 	Initrd string `json:"initrd,omitempty"`
 	Append string `json:"append,omitempty"` // 内核参数
+	ToRAM  bool   `json:"toram,omitempty"`  // 加载到内存运行（live 系统驻留 RAM）
+	Distro string `json:"distro,omitempty"` // 发行版标识，用于生成 toram 参数
 
 	// Windows
 	Wimboot   string `json:"wimboot,omitempty"`   // wimboot 路径（一般固定 /files/tftp/wimboot）

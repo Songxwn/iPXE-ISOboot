@@ -336,6 +336,7 @@ func (s *Server) handleQuickAdd(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		e.Type = menu.TypeLinux
+		e.Distro = info.Distro
 		e.Kernel = extracted[info.Kernel]
 		if p, ok := extracted[info.Initrd]; ok {
 			e.Initrd = p

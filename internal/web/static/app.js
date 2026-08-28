@@ -269,9 +269,10 @@ function onTypeChange() {
 
 function openEntryEditor() {
   document.getElementById('entryModalTitle').textContent = '新增启动项';
-  ['eTitle','eKernel','eInitrd','eAppend','eBootmgr','eBCD','eBootSDI','eBootWIM','eWinExtras',
-   'eMbootC32','eMbootEFI','eBootCFG','eSanURL','eScript'].forEach(id => document.getElementById(id).value = '');
+  ['eTitle','eKernel','eInitrd','eAppend','eDistro','eBootmgr','eBCD','eBootSDI','eBootWIM','eWinExtras',
+   'eMbootC32','eMbootEFI','eBootCFG','eSanURL','eSanURL2','eScript'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('eWimboot').value = '/files/tftp/wimboot';
+  document.getElementById('eToRAM').checked = false;
   document.getElementById('eOrder').value = 0;
   document.getElementById('eEnabled').checked = true;
   document.getElementById('eType').value = 'linux';
@@ -292,6 +293,8 @@ function editEntry(json) {
   document.getElementById('eKernel').value = e.kernel || '';
   document.getElementById('eInitrd').value = e.initrd || '';
   document.getElementById('eAppend').value = e.append || '';
+  document.getElementById('eDistro').value = e.distro || '';
+  document.getElementById('eToRAM').checked = !!e.toram;
   document.getElementById('eWimboot').value = e.wimboot || '/files/tftp/wimboot';
   document.getElementById('eBootmgr').value = e.bootmgr || '';
   document.getElementById('eBCD').value = e.bcd || '';
@@ -302,6 +305,7 @@ function editEntry(json) {
   document.getElementById('eMbootEFI').value = e.mboot_efi || '';
   document.getElementById('eBootCFG').value = e.boot_cfg || '';
   document.getElementById('eSanURL').value = e.san_url || '';
+  document.getElementById('eSanURL2').value = e.san_url || '';
   document.getElementById('eScript').value = e.script || '';
   onTypeChange();
 }
@@ -320,6 +324,8 @@ async function saveEntry() {
     kernel: document.getElementById('eKernel').value,
     initrd: document.getElementById('eInitrd').value,
     append: document.getElementById('eAppend').value,
+    distro: document.getElementById('eDistro').value,
+    toram: document.getElementById('eToRAM').checked,
     wimboot: document.getElementById('eWimboot').value,
     bootmgr: document.getElementById('eBootmgr').value,
     bcd: document.getElementById('eBCD').value,
@@ -329,7 +335,9 @@ async function saveEntry() {
     mboot_c32: document.getElementById('eMbootC32').value,
     mboot_efi: document.getElementById('eMbootEFI').value,
     boot_cfg: document.getElementById('eBootCFG').value,
-    san_url: document.getElementById('eSanURL').value,
+    san_url: document.getElementById('eType').value === 'memdisk'
+      ? document.getElementById('eSanURL2').value
+      : document.getElementById('eSanURL').value,
     script: document.getElementById('eScript').value,
   };
   if (!body.title) { alert('标题不能为空'); return; }

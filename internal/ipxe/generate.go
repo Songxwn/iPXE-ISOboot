@@ -74,10 +74,12 @@ func EntryScript(e *menu.Entry, ctx BootContext) string {
 		return esxiScript(e)
 	case menu.TypeSanBoot:
 		return sanbootScript(e)
+	case menu.TypeMemdisk:
+		return memdiskScript(e)
 	case menu.TypeCustom:
 		return e.Script + "\n"
 	default:
-		return "echo 未知启动项类型\n"
+		return "echo Unknown entry type\n"
 	}
 }
 
@@ -97,11 +99,51 @@ func linuxScript(e *menu.Entry) string {
 	if e.Append != "" {
 		b.WriteString(" " + e.Append)
 	}
+	if e.ToRAM {
+		b.WriteString(" " + toramParams(e.Distro))
+	}
 	b.WriteString("\n")
 	if e.Initrd != "" {
 		b.WriteString("initrd " + url("${base}", e.Initrd) + "\n")
 	}
 	b.WriteString("boot || goto failed\n")
+	b.WriteString(":failed\necho Boot failed\nsleep 3\n")
+	return b.String()
+}
+
+// toramParams 依发行版返回“启动后驻留内存”的内核参数（UEFI/BIOS 通用）。
+func toramParams(distro string) string {
+	switch distro {
+	case "ubuntu":
+		return "toram"
+	case "debian":
+		// Debian live 用 toram；netinst 无此参数（会被忽略）
+		return "toram"
+	case "centos", "rocky", "almalinux", "fedora":
+		return "rd.live.ram=1"
+	case "opensuse":
+		return "mediacheck=0 toram"
+	case "alpine":
+		return "" // Alpine 默认即在 RAM 运行
+	case "arch":
+		return "copytoram=y"
+	default:
+		return "toram"
+	}
+}
+
+// memdiskScript 生成把整个 ISO 下载到内存当虚拟光驱的脚本（仅 BIOS）。
+func memdiskScript(e *menu.Entry) string {
+	var b strings.Builder
+	// UEFI 下 memdisk 不可用，给出提示并退回失败分支。
+	b.WriteString("iseq ${platform} efi && goto memdisk_uefi ||\n")
+	b.WriteString("kernel " + url("${base}", "/files/tftp/memdisk") + " iso raw\n")
+	b.WriteString("initrd " + url("${base}", e.SanURL) + "\n")
+	b.WriteString("boot || goto failed\n")
+	b.WriteString(":memdisk_uefi\n")
+	b.WriteString("echo memdisk (whole-ISO to RAM) is BIOS-only and not supported under UEFI.\n")
+	b.WriteString("echo Use a Linux entry with 'Load to RAM (toram)' for UEFI instead.\n")
+	b.WriteString("sleep 5\n")
 	b.WriteString(":failed\necho Boot failed\nsleep 3\n")
 	return b.String()
 }

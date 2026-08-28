@@ -41,6 +41,10 @@ var files = []file{
 	{"wimboot", []string{
 		"https://github.com/ipxe/wimboot/releases/latest/download/wimboot",
 	}}, // Windows 引导
+	{"memdisk", []string{
+		// memdisk 来自 syslinux。优先本地复制（见 ensureMemdisk），以下为下载兜底源。
+		"https://github.com/netbootxyz/syslinux/raw/master/bios/memdisk/memdisk",
+	}}, // memdisk 内存启动（整盘入内存，BIOS）
 }
 
 // Ensure 确保引导文件就位，缺失则下载。
@@ -53,6 +57,15 @@ func Ensure(tftpRoot string) error {
 		dst := filepath.Join(tftpRoot, f.name)
 		if fi, err := os.Stat(dst); err == nil && fi.Size() > 0 {
 			continue // 已存在
+		}
+		// memdisk 优先从本地 syslinux 安装路径复制（更可靠、版本匹配）
+		if f.name == "memdisk" {
+			if src := findLocalMemdisk(); src != "" {
+				if err := copyLocal(src, dst); err == nil {
+					log.Printf("[bootfiles] 已从本地复制 memdisk (%s)", src)
+					continue
+				}
+			}
 		}
 		var lastErr error
 		ok := false
@@ -70,6 +83,44 @@ func Ensure(tftpRoot string) error {
 		}
 	}
 	return nil
+}
+
+// findLocalMemdisk 在常见 syslinux 安装路径查找 memdisk。
+func findLocalMemdisk() string {
+	for _, dir := range []string{
+		"/usr/lib/syslinux/memdisk",
+		"/usr/lib/syslinux",
+		"/usr/lib/syslinux/bios",
+		"/usr/share/syslinux",
+		"/usr/share/syslinux/memdisk",
+		"/usr/lib/ISOLINUX",
+	} {
+		p := filepath.Join(dir, "memdisk")
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() && fi.Size() > 0 {
+			return p
+		}
+	}
+	return ""
+}
+
+func copyLocal(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	tmp := dst + ".tmp"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		os.Remove(tmp)
+		return err
+	}
+	out.Close()
+	return os.Rename(tmp, dst)
 }
 
 func download(client *http.Client, url, dst string) error {

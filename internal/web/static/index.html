@@ -156,6 +156,7 @@
         <option value="windows">Windows</option>
         <option value="esxi">VMware ESXi</option>
         <option value="sanboot">直挂 ISO (sanboot)</option>
+        <option value="memdisk">整盘入内存 (memdisk, 仅BIOS)</option>
         <option value="custom">自定义脚本</option>
       </select>
     </label>
@@ -166,6 +167,8 @@
       <label>Kernel 路径<input id="eKernel" placeholder="/files/extract/ubuntu/casper/vmlinuz"></label>
       <label>Initrd 路径<input id="eInitrd" placeholder="/files/extract/ubuntu/casper/initrd"></label>
       <label>内核参数 (append)<input id="eAppend" placeholder="boot=casper url=http://.../ubuntu.iso"></label>
+      <label>发行版<input id="eDistro" placeholder="ubuntu / debian / rocky / fedora ..."></label>
+      <label class="check"><input id="eToRAM" type="checkbox"> 加载到内存运行 (toram，UEFI/BIOS 通用，需 live 系统支持)</label>
     </div>
     <div class="type-fields hidden" data-for="windows">
       <label>wimboot 路径<input id="eWimboot" value="/files/tftp/wimboot"></label>
@@ -182,6 +185,10 @@
     </div>
     <div class="type-fields hidden" data-for="sanboot">
       <label>ISO URL<input id="eSanURL" placeholder="/files/iso/tool.iso 或 http://..."></label>
+    </div>
+    <div class="type-fields hidden" data-for="memdisk">
+      <label>ISO URL（整个 ISO 会下载到内存当虚拟光驱，仅 BIOS 可用）
+        <input id="eSanURL2" placeholder="/files/iso/tool.iso 或 http://..."></label>
     </div>
     <div class="type-fields hidden" data-for="custom">
       <label>iPXE 脚本片段<textarea id="eScript" rows="8" placeholder="kernel ...&#10;initrd ...&#10;boot"></textarea></label>
