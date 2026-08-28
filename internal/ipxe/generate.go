@@ -20,7 +20,7 @@ func Menu(entries []*menu.Entry, ctx BootContext) string {
 	b.WriteString("#!ipxe\n\n")
 	b.WriteString("set base " + ctx.BaseURL + "\n")
 	b.WriteString(":start\n")
-	b.WriteString("menu iPXE-ISOboot 网络装机菜单\n")
+	b.WriteString("menu iPXE-ISOboot Network Boot Menu\n")
 
 	timeout := ctx.Timeout * 1000
 	for _, e := range entries {
@@ -32,8 +32,8 @@ func Menu(entries []*menu.Entry, ctx BootContext) string {
 	}
 	b.WriteString("item --gap -- ----------------------------\n")
 	b.WriteString("item shell     iPXE Shell\n")
-	b.WriteString("item reboot    重启\n")
-	b.WriteString("item exit      退出到本地磁盘\n")
+	b.WriteString("item reboot    Reboot\n")
+	b.WriteString("item exit      Boot from local disk\n")
 
 	if ctx.Default != "" {
 		b.WriteString(fmt.Sprintf("choose --default %s --timeout %d selected || goto cancel\n", ctx.Default, timeout))
@@ -44,7 +44,7 @@ func Menu(entries []*menu.Entry, ctx BootContext) string {
 
 	// 通用控制项
 	b.WriteString(":cancel\n")
-	b.WriteString("echo 已取消，3 秒后退出...\nsleep 3\ngoto exit\n\n")
+	b.WriteString("echo Cancelled, exiting in 3s...\nsleep 3\ngoto exit\n\n")
 	b.WriteString(":shell\nshell\ngoto start\n\n")
 	b.WriteString(":reboot\nreboot\n\n")
 	b.WriteString(":exit\nexit\n\n")
@@ -55,7 +55,7 @@ func Menu(entries []*menu.Entry, ctx BootContext) string {
 			continue
 		}
 		b.WriteString(fmt.Sprintf(":%s\n", e.ID))
-		b.WriteString("echo 正在加载 " + e.Title + " ...\n")
+		b.WriteString("echo Loading " + e.Title + " ...\n")
 		b.WriteString(EntryScript(e, ctx))
 		b.WriteString("goto start\n\n")
 	}
@@ -102,7 +102,7 @@ func linuxScript(e *menu.Entry) string {
 		b.WriteString("initrd " + url("${base}", e.Initrd) + "\n")
 	}
 	b.WriteString("boot || goto failed\n")
-	b.WriteString(":failed\necho 启动失败\nsleep 3\n")
+	b.WriteString(":failed\necho Boot failed\nsleep 3\n")
 	return b.String()
 }
 
@@ -131,7 +131,7 @@ func windowsScript(e *menu.Entry) string {
 		b.WriteString(e.WinExtras + "\n")
 	}
 	b.WriteString("boot || goto failed\n")
-	b.WriteString(":failed\necho 启动失败\nsleep 3\n")
+	b.WriteString(":failed\necho Boot failed\nsleep 3\n")
 	return b.String()
 }
 
@@ -150,13 +150,13 @@ func esxiScript(e *menu.Entry) string {
 		b.WriteString("kernel " + url("${base}", e.MbootC32) + " -c " + url("${base}", e.BootCFG) + "\n")
 	}
 	b.WriteString("boot || goto failed\n")
-	b.WriteString(":failed\necho 启动失败\nsleep 3\n")
+	b.WriteString(":failed\necho Boot failed\nsleep 3\n")
 	return b.String()
 }
 
 func sanbootScript(e *menu.Entry) string {
 	var b strings.Builder
 	b.WriteString("sanboot --no-describe " + url("${base}", e.SanURL) + " || goto failed\n")
-	b.WriteString(":failed\necho 启动失败\nsleep 3\n")
+	b.WriteString(":failed\necho Boot failed\nsleep 3\n")
 	return b.String()
 }

@@ -15,6 +15,9 @@ import (
 //go:embed static/*
 var staticFS embed.FS
 
+// Version 是应用版本号，由 main 在启动时设置（来自 ldflags 注入）。
+var Version = "dev"
+
 // Server 聚合 HTTP 相关依赖。
 type Server struct {
 	cfg     *config.Config
@@ -44,6 +47,7 @@ func (s *Server) routes() {
 
 	// REST API（需认证）
 	s.mux.HandleFunc("/api/login", s.handleLogin)
+	s.mux.HandleFunc("/api/version", s.handleVersion) // 免认证，供登录页显示
 	s.mux.HandleFunc("/api/status", s.auth(s.handleStatus))
 	s.mux.HandleFunc("/api/interfaces", s.auth(s.handleInterfaces))
 	s.mux.HandleFunc("/api/config", s.auth(s.handleConfig))

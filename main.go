@@ -98,6 +98,7 @@ func main() {
 	}
 
 	// HTTP / Web 控制台
+	web.Version = version
 	ws := web.New(cfg, mstore, dhcpMgr)
 	srv := &http.Server{
 		Addr:    ":" + itoa(cfg.HTTPPort),

@@ -31,8 +31,8 @@ type BootISOParams struct {
 func AutoExec(p BootISOParams) string {
 	var b strings.Builder
 	b.WriteString("#!ipxe\n\n")
-	b.WriteString("echo iPXE-ISOboot 自定义引导盘\n")
-	b.WriteString("echo 正在初始化网络...\n\n")
+	b.WriteString("echo iPXE-ISOboot custom boot disk\n")
+	b.WriteString("echo Initializing network...\n\n")
 
 	iface := p.NetIf
 	if iface == "" {
@@ -41,15 +41,15 @@ func AutoExec(p BootISOParams) string {
 
 	// VLAN：在物理网卡上创建 VLAN 接口
 	if p.VLANID > 0 {
-		b.WriteString(fmt.Sprintf("echo 创建 VLAN %d ...\n", p.VLANID))
-		b.WriteString(fmt.Sprintf("vcreate --tag %d %s || echo VLAN 创建失败\n", p.VLANID, iface))
+		b.WriteString(fmt.Sprintf("echo Creating VLAN %d ...\n", p.VLANID))
+		b.WriteString(fmt.Sprintf("vcreate --tag %d %s || echo VLAN creation failed\n", p.VLANID, iface))
 		// VLAN 接口通常命名为 <iface>-<tag>
 		iface = fmt.Sprintf("%s-%d", iface, p.VLANID)
 	}
 
 	switch strings.ToLower(p.IPMode) {
 	case "static":
-		b.WriteString("echo 使用静态 IP 配置\n")
+		b.WriteString("echo Using static IP configuration\n")
 		b.WriteString(fmt.Sprintf("set %s/ip %s\n", iface, p.IP))
 		if p.Netmask != "" {
 			b.WriteString(fmt.Sprintf("set %s/netmask %s\n", iface, p.Netmask))
@@ -62,7 +62,7 @@ func AutoExec(p BootISOParams) string {
 		}
 		b.WriteString(fmt.Sprintf("ifopen %s\n", iface))
 	default: // dhcp
-		b.WriteString("echo 通过 DHCP 获取地址\n")
+		b.WriteString("echo Acquiring address via DHCP\n")
 		if p.NetIf != "" || p.VLANID > 0 {
 			b.WriteString(fmt.Sprintf("dhcp %s || goto retry\n", iface))
 		} else {
@@ -71,7 +71,7 @@ func AutoExec(p BootISOParams) string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString("echo 连接服务器: " + p.ChainURL + "\n")
+	b.WriteString("echo Connecting to server: " + p.ChainURL + "\n")
 	b.WriteString("chain " + p.ChainURL + " || goto retry\n\n")
 
 	// 失败重试
@@ -80,9 +80,9 @@ func AutoExec(p BootISOParams) string {
 	if to <= 0 {
 		to = 5
 	}
-	b.WriteString(fmt.Sprintf("echo 网络或连接失败，%d 秒后重试...\n", to))
+	b.WriteString(fmt.Sprintf("echo Network or connection failed, retrying in %ds...\n", to))
 	b.WriteString(fmt.Sprintf("sleep %d\n", to))
-	b.WriteString("echo 按 Ctrl-B 进入 iPXE 命令行手动排查\n")
+	b.WriteString("echo Press Ctrl-B for the iPXE command line to troubleshoot\n")
 	b.WriteString("reboot\n")
 
 	return b.String()

@@ -10,7 +10,7 @@
 <div id="login" class="login-wrap">
   <div class="login-box">
     <h1>iPXE-ISOboot</h1>
-    <p class="sub">网络装机控制台</p>
+    <p class="sub">网络装机控制台 <span id="loginVer"></span></p>
     <input id="loginUser" placeholder="用户名" value="admin">
     <input id="loginPass" type="password" placeholder="密码" value="admin">
     <button onclick="doLogin()">登录</button>
@@ -20,7 +20,7 @@
 
 <div id="app" class="hidden">
   <header>
-    <div class="brand">iPXE-ISOboot</div>
+    <div class="brand">iPXE-ISOboot <span id="headerVer" class="ver"></span></div>
     <nav>
       <a data-tab="dashboard" class="active">概览</a>
       <a data-tab="isos">ISO 管理</a>

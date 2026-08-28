@@ -51,6 +51,11 @@ func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"script": ipxe.Menu(s.menu.List(), ctx)})
 }
 
+// GET /api/version —— 返回应用版本号（免认证）。
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]string{"version": Version})
+}
+
 // GET /api/status
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	dhcpRunning := false

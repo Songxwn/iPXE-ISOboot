@@ -422,8 +422,21 @@ async function genBootISO() {
   }
 }
 
-// 初始化：尝试拉取状态判断是否已登录
+// 加载并显示版本号（免认证）
+async function loadVersion() {
+  try {
+    const v = await fetch('/api/version').then(r => r.json());
+    const text = v.version || '';
+    const hv = document.getElementById('headerVer');
+    const lv = document.getElementById('loginVer');
+    if (hv) hv.textContent = text;
+    if (lv) lv.textContent = text;
+  } catch (e) {}
+}
+
+// 初始化：显示版本，并尝试拉取状态判断是否已登录
 (async () => {
+  loadVersion();
   try { await api('/api/status'); showApp(); }
   catch { showLogin(); }
 })();
