@@ -108,11 +108,19 @@ async function loadMenu() {
 
 async function loadConfig() {
   try {
+    // 先填充网卡列表
+    const ifaces = await api('/api/interfaces') || [];
+    const sel = document.getElementById('cfgIface');
+    sel.innerHTML = '<option value="">全部网卡（自动）</option>' + ifaces.map(i =>
+      `<option value="${i.name}">${i.name} — ${i.ipv4.join(', ')}${i.up ? '' : ' (未启用)'}</option>`
+    ).join('');
+
     const c = await api('/api/config');
     document.getElementById('cfgServerIP').value = c.server_ip || '';
     document.getElementById('cfgTimeout').value = c.default_menu_timeout;
     document.getElementById('cfgDefault').value = c.default_entry_id || '';
     document.getElementById('cfgProxy').checked = c.enable_proxy_dhcp;
+    document.getElementById('cfgIface').value = c.dhcp_interface || '';
     document.getElementById('cfgUser').value = c.admin_user || '';
   } catch (e) {}
 }
@@ -133,6 +141,7 @@ async function saveConfig() {
     default_menu_timeout: parseInt(document.getElementById('cfgTimeout').value) || 10,
     default_entry_id: document.getElementById('cfgDefault').value,
     enable_proxy_dhcp: document.getElementById('cfgProxy').checked,
+    dhcp_interface: document.getElementById('cfgIface').value,
     admin_user: document.getElementById('cfgUser').value,
     admin_pass: document.getElementById('cfgPass').value,
   };
@@ -323,6 +332,62 @@ async function deleteEntry(id) {
   if (!confirm('删除该启动项？')) return;
   await api('/api/menu/' + id, { method: 'DELETE' });
   loadMenu();
+}
+
+// ---- 引导 ISO 生成 ----
+function onBiModeChange() {
+  const m = document.getElementById('biIPMode').value;
+  document.getElementById('biStatic').classList.toggle('hidden', m !== 'static');
+}
+
+function biParams() {
+  return {
+    chain_url: document.getElementById('biChain').value.trim(),
+    ip_mode: document.getElementById('biIPMode').value,
+    net_if: document.getElementById('biNetIf').value.trim(),
+    ip: document.getElementById('biIP').value.trim(),
+    netmask: document.getElementById('biMask').value.trim(),
+    gateway: document.getElementById('biGw').value.trim(),
+    dns: document.getElementById('biDns').value.trim(),
+    vlan_id: parseInt(document.getElementById('biVlan').value) || 0,
+    timeout: parseInt(document.getElementById('biTimeout').value) || 5,
+  };
+}
+
+async function previewAutoexec() {
+  try {
+    const r = await api('/api/preview-autoexec', { method: 'POST', body: JSON.stringify(biParams()) });
+    const pre = document.getElementById('biPreview');
+    pre.textContent = r.script;
+    pre.classList.remove('hidden');
+  } catch (e) {
+    document.getElementById('biStatus').textContent = '失败：' + e.message;
+  }
+}
+
+async function genBootISO() {
+  const status = document.getElementById('biStatus');
+  status.textContent = '生成中（首次需下载 iPXE 二进制）…';
+  try {
+    const res = await fetch('/api/gen-boot-iso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(biParams()),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ipxe-boot.iso';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    status.textContent = '已生成并开始下载';
+  } catch (e) {
+    status.textContent = '失败：' + e.message;
+  }
 }
 
 // 初始化：尝试拉取状态判断是否已登录

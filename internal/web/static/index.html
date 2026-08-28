@@ -25,6 +25,7 @@
       <a data-tab="dashboard" class="active">概览</a>
       <a data-tab="isos">ISO 管理</a>
       <a data-tab="menu">启动菜单</a>
+      <a data-tab="bootiso">引导 ISO</a>
       <a data-tab="settings">设置</a>
       <a data-tab="preview">脚本预览</a>
     </nav>
@@ -72,6 +73,49 @@
       </table>
     </section>
 
+    <!-- 引导 ISO 生成 -->
+    <section id="tab-bootiso" class="tab">
+      <h2>生成自定义 iPXE 引导 ISO</h2>
+      <p class="muted">用于无法配置 PXE/DHCP 的环境：把生成的小 ISO 刻盘或写入 U 盘/挂载到虚拟机，
+        目标机器启动后 iPXE 会按下述配置联网并自动连接本服务器菜单。支持 UEFI 与传统 BIOS。</p>
+      <div class="form" style="max-width:640px">
+        <label>连接目标 (chain URL)
+          <input id="biChain" placeholder="留空则默认 http://本机:8081/boot.ipxe">
+        </label>
+
+        <label>网卡获取 IP 方式
+          <select id="biIPMode" onchange="onBiModeChange()">
+            <option value="dhcp">DHCP 自动获取</option>
+            <option value="static">静态 IP</option>
+          </select>
+        </label>
+
+        <label>目标网卡 (可选)
+          <input id="biNetIf" placeholder="如 net0；留空自动">
+        </label>
+
+        <label>VLAN ID (可选，0 或留空表示不使用)
+          <input id="biVlan" type="number" placeholder="0">
+        </label>
+
+        <div id="biStatic" class="hidden">
+          <label>IP 地址<input id="biIP" placeholder="192.168.1.50"></label>
+          <label>子网掩码<input id="biMask" placeholder="255.255.255.0"></label>
+          <label>网关<input id="biGw" placeholder="192.168.1.1"></label>
+          <label>DNS<input id="biDns" placeholder="192.168.1.1"></label>
+        </div>
+
+        <label>失败重试等待 (秒)<input id="biTimeout" type="number" value="5"></label>
+
+        <div class="modal-actions">
+          <button onclick="genBootISO()">生成并下载 ISO</button>
+          <button class="ghost" onclick="previewAutoexec()">预览脚本</button>
+          <span id="biStatus"></span>
+        </div>
+        <pre id="biPreview" class="hidden"></pre>
+      </div>
+    </section>
+
     <!-- 设置 -->
     <section id="tab-settings" class="tab">
       <h2>设置</h2>
@@ -80,6 +124,9 @@
         <label>菜单超时（秒）<input id="cfgTimeout" type="number"></label>
         <label>默认启动项 ID<input id="cfgDefault"></label>
         <label class="check"><input id="cfgProxy" type="checkbox"> 启用内置 ProxyDHCP</label>
+        <label>DHCP 监听网卡
+          <select id="cfgIface"><option value="">全部网卡（自动）</option></select>
+        </label>
         <hr>
         <label>管理员用户名<input id="cfgUser"></label>
         <label>管理员密码（留空则不修改）<input id="cfgPass" type="password"></label>

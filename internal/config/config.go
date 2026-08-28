@@ -15,7 +15,8 @@ type Config struct {
 	TFTPPort int    `json:"tftp_port"` // TFTP 端口，默认 69
 
 	// ProxyDHCP
-	EnableProxyDHCP bool `json:"enable_proxy_dhcp"` // 是否启用内置 ProxyDHCP（与现有 DHCP 共存）
+	EnableProxyDHCP bool   `json:"enable_proxy_dhcp"` // 是否启用内置 ProxyDHCP（与现有 DHCP 共存）
+	DHCPInterface   string `json:"dhcp_interface"`    // 指定监听/响应的网卡名（空=全部网卡）
 
 	// 认证
 	AdminUser string `json:"admin_user"`
@@ -42,6 +43,7 @@ func Default(dataDir string) *Config {
 		HTTPPort:           8081,
 		TFTPPort:           69,
 		EnableProxyDHCP:    true,
+		DHCPInterface:      "",
 		AdminUser:          "admin",
 		AdminPass:          "admin",
 		DataDir:            dataDir,

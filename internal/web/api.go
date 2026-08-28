@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ipxe-isoboot/internal/bootiso"
 	"ipxe-isoboot/internal/config"
 	"ipxe-isoboot/internal/ipxe"
 	"ipxe-isoboot/internal/iso"
 	"ipxe-isoboot/internal/menu"
+	"ipxe-isoboot/internal/netif"
 )
 
 // baseURL 依据配置或请求推断对外 HTTP 基地址。
@@ -61,6 +63,11 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/interfaces —— 列出本机网卡供选择 DHCP 监听网卡
+func (s *Server) handleInterfaces(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, netif.List())
+}
+
 // GET/POST /api/config
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
@@ -76,6 +83,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		// 仅允许修改这些字段
 		s.cfg.ServerIP = strings.TrimSpace(in.ServerIP)
 		s.cfg.EnableProxyDHCP = in.EnableProxyDHCP
+		s.cfg.DHCPInterface = strings.TrimSpace(in.DHCPInterface)
 		s.cfg.DefaultMenuTimeout = in.DefaultMenuTimeout
 		s.cfg.DefaultEntryID = in.DefaultEntryID
 		if in.AdminUser != "" {
@@ -285,3 +293,76 @@ func (s *Server) handleDeleteISO(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, map[string]any{"ok": true})
 }
+
+// POST /api/gen-boot-iso —— 生成自定义 iPXE 引导 ISO 并直接下载。
+func (s *Server) handleGenBootISO(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", 405)
+		return
+	}
+	var req struct {
+		ChainURL string `json:"chain_url"`
+		IPMode   string `json:"ip_mode"`
+		NetIf    string `json:"net_if"`
+		IP       string `json:"ip"`
+		Netmask  string `json:"netmask"`
+		Gateway  string `json:"gateway"`
+		DNS      string `json:"dns"`
+		VLANID   int    `json:"vlan_id"`
+		Timeout  int    `json:"timeout"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad json", 400)
+		return
+	}
+	if req.ChainURL == "" {
+		req.ChainURL = s.baseURL(r) + "/boot.ipxe"
+	}
+	params := ipxe.BootISOParams{
+		ChainURL: req.ChainURL,
+		IPMode:   req.IPMode,
+		NetIf:    req.NetIf,
+		IP:       req.IP,
+		Netmask:  req.Netmask,
+		Gateway:  req.Gateway,
+		DNS:      req.DNS,
+		VLANID:   req.VLANID,
+		Timeout:  req.Timeout,
+	}
+	data, err := bootiso.Generate(s.cfg.TFTPRoot(), params)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", `attachment; filename="ipxe-boot.iso"`)
+	w.Header().Set("Content-Length", itoaLen(len(data)))
+	w.Write(data)
+}
+
+// POST /api/preview-autoexec —— 预览将嵌入引导 ISO 的 autoexec.ipxe。
+func (s *Server) handlePreviewAutoexec(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ChainURL string `json:"chain_url"`
+		IPMode   string `json:"ip_mode"`
+		NetIf    string `json:"net_if"`
+		IP       string `json:"ip"`
+		Netmask  string `json:"netmask"`
+		Gateway  string `json:"gateway"`
+		DNS      string `json:"dns"`
+		VLANID   int    `json:"vlan_id"`
+		Timeout  int    `json:"timeout"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.ChainURL == "" {
+		req.ChainURL = s.baseURL(r) + "/boot.ipxe"
+	}
+	script := ipxe.AutoExec(ipxe.BootISOParams{
+		ChainURL: req.ChainURL, IPMode: req.IPMode, NetIf: req.NetIf,
+		IP: req.IP, Netmask: req.Netmask, Gateway: req.Gateway,
+		DNS: req.DNS, VLANID: req.VLANID, Timeout: req.Timeout,
+	})
+	writeJSON(w, map[string]string{"script": script})
+}
+
+func itoaLen(n int) string { return fmt.Sprintf("%d", n) }

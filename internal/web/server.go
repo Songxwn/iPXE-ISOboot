@@ -43,6 +43,7 @@ func (s *Server) routes() {
 	// REST API（需认证）
 	s.mux.HandleFunc("/api/login", s.handleLogin)
 	s.mux.HandleFunc("/api/status", s.auth(s.handleStatus))
+	s.mux.HandleFunc("/api/interfaces", s.auth(s.handleInterfaces))
 	s.mux.HandleFunc("/api/config", s.auth(s.handleConfig))
 	s.mux.HandleFunc("/api/menu", s.auth(s.handleMenu))         // GET 列表 / POST 新增或更新
 	s.mux.HandleFunc("/api/menu/", s.auth(s.handleMenuItem))    // DELETE /api/menu/{id}
@@ -52,6 +53,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/extract", s.auth(s.handleExtract))   // POST 提取 ISO 内文件
 	s.mux.HandleFunc("/api/delete-iso", s.auth(s.handleDeleteISO))
 	s.mux.HandleFunc("/api/preview", s.auth(s.handlePreview))   // GET 预览生成的 iPXE 脚本
+	s.mux.HandleFunc("/api/gen-boot-iso", s.auth(s.handleGenBootISO))       // POST 生成引导 ISO
+	s.mux.HandleFunc("/api/preview-autoexec", s.auth(s.handlePreviewAutoexec)) // POST 预览 autoexec
 }
 
 // Handler 返回顶层 http.Handler（带日志）。

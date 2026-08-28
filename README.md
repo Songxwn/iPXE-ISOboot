@@ -7,6 +7,8 @@
 - ✅ **VMware ESXi**（mboot multiboot 引导）
 - ✅ **UEFI 与传统 BIOS** 双模式（自动按客户端体系结构下发引导文件）
 - ✅ **Web 控制台**：上传 ISO、自动分析镜像类型、提取引导文件、可视化编辑启动菜单
+- ✅ **可选择 DHCP 监听网卡**：多网卡环境下限定在指定内网网卡响应，避免干扰其他网段
+- ✅ **在线生成自定义 iPXE 引导 ISO**：无法配置 PXE/DHCP 的环境可下载引导盘，支持自定义连接地址、网卡取 IP 方式、静态 IP、VLAN，UEFI/BIOS 双启动
 - ✅ **单二进制、零依赖**：内置 ProxyDHCP + TFTP + HTTP，纯 Go 标准库实现
 - ✅ **GitHub Actions 自动编译并发布多平台版本**
 
@@ -130,6 +132,30 @@ CentOS/Rocky：
 ```
 inst.repo=http://<IP>:8081/files/iso/rocky.iso ip=dhcp
 ```
+
+## 选择 DHCP 监听网卡
+
+在“设置”页的 **DHCP 监听网卡** 下拉框可指定 ProxyDHCP 只在某块网卡（子网）上响应，
+适合服务器有多张网卡时避免干扰生产网段。选定网卡后，下发给客户端的 next-server 地址
+也会优先使用该网卡的 IP。留空则监听全部网卡并自动按客户端来源子网匹配。
+
+## 生成自定义 iPXE 引导 ISO
+
+适用于**无法配置 PXE/DHCP 引导**的环境（如公有云、受限网络、单机维护）。在“引导 ISO”页填写：
+
+- **连接目标 (chain URL)**：留空默认 `http://本机:8081/boot.ipxe`，也可指向任意 iPXE 脚本
+- **网卡取 IP 方式**：`DHCP 自动获取` 或 `静态 IP`（可填 IP/掩码/网关/DNS）
+- **目标网卡**：如 `net0`，留空自动
+- **VLAN ID**：>0 时先在网卡上创建 VLAN 再取 IP
+
+点击“生成并下载 ISO”得到 `ipxe-boot.iso`。该 ISO：
+
+- **UEFI/BIOS 双启动**：El Torito 同时提供 BIOS(no-emulation `ipxe.lkrn`) 与 UEFI(FAT ESP + `BOOTX64.EFI`) 引导
+- 启动后按配置联网并 `chain` 到你的服务器菜单
+
+使用方式：刻录光盘、用 `dd`/Rufus/Ventoy 写入 U 盘，或在虚拟机中挂载为光驱启动。
+
+> 首次生成会自动从 `boot.ipxe.org` 下载 `ipxe.lkrn` 与 `ipxe.efi` 并缓存到 `data/tftp/`。
 
 ## 命令行参数
 

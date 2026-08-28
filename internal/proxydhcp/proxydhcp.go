@@ -15,6 +15,7 @@ import (
 	"net"
 
 	"ipxe-isoboot/internal/config"
+	"ipxe-isoboot/internal/netif"
 )
 
 const (
@@ -53,6 +54,7 @@ const (
 type Server struct {
 	cfg  *config.Config
 	conn *net.UDPConn
+	ifc  *net.Interface // 选定的网卡（nil 表示全部）
 }
 
 func New(cfg *config.Config) *Server { return &Server{cfg: cfg} }
@@ -81,13 +83,23 @@ func (s *Server) bootFileFor(arch uint16, isIPXE bool, httpURL string) string {
 
 // Serve 启动监听循环（阻塞）。
 func (s *Server) Serve() error {
+	// 解析选定网卡（若配置了）。用于来源过滤与 next-server IP。
+	s.ifc = netif.FindByName(s.cfg.DHCPInterface)
+	if s.cfg.DHCPInterface != "" && s.ifc == nil {
+		log.Printf("[proxydhcp] 警告: 找不到网卡 %q，将监听全部网卡", s.cfg.DHCPInterface)
+	}
+
 	addr := &net.UDPAddr{IP: net.IPv4zero, Port: 67}
 	conn, err := net.ListenUDP("udp4", addr)
 	if err != nil {
 		return err
 	}
 	s.conn = conn
-	log.Printf("[proxydhcp] 监听 udp/67")
+	if s.ifc != nil {
+		log.Printf("[proxydhcp] 监听 udp/67 (仅网卡 %s)", s.ifc.Name)
+	} else {
+		log.Printf("[proxydhcp] 监听 udp/67 (全部网卡)")
+	}
 
 	buf := make([]byte, 1500)
 	for {
@@ -123,6 +135,21 @@ func (s *Server) handle(pkt []byte, raddr *net.UDPAddr) {
 		return
 	}
 
+	// 网卡过滤：若指定了网卡，则只响应来自该网卡子网的请求。
+	// PXE 裸包源 IP 常为 0.0.0.0（无法判断），此时放行由 OS 交付的包；
+	// 经 DHCP relay 转发的请求用 giaddr 判断子网归属。
+	if s.ifc != nil {
+		if !msg.giaddr.Equal(net.IPv4zero) && !msg.giaddr.IsUnspecified() {
+			if !netif.Contains(s.ifc, msg.giaddr) {
+				return
+			}
+		} else if !raddr.IP.Equal(net.IPv4zero) && !raddr.IP.IsUnspecified() {
+			if !netif.Contains(s.ifc, raddr.IP) {
+				return
+			}
+		}
+	}
+
 	arch := uint16(archBIOS)
 	if v := msg.options[optClientArch]; len(v) == 2 {
 		arch = binary.BigEndian.Uint16(v)
@@ -156,6 +183,12 @@ func (s *Server) serverIP(raddr *net.UDPAddr) net.IP {
 	if s.cfg.ServerIP != "" {
 		if ip := net.ParseIP(s.cfg.ServerIP); ip != nil {
 			return ip.To4()
+		}
+	}
+	// 若指定了网卡，用该网卡的 IP 作为 next-server。
+	if s.ifc != nil {
+		if ip := netif.PrimaryIPv4(s.ifc); ip != nil {
+			return ip
 		}
 	}
 	return localIPFor(raddr.IP)
