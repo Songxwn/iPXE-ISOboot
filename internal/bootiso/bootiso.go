@@ -26,9 +26,15 @@ import (
 
 // 预置 iPXE 二进制（含 EMBED 脚本可读取启动盘 autoexec 的通用构建）。
 // 这些是 boot.ipxe.org 官方预编译产物。
+// 候选下载源（按顺序尝试）。boot.ipxe.org 的 EFI 位于架构子目录。
 var (
-	lkrnURL = "https://boot.ipxe.org/ipxe.lkrn" // BIOS 可引导内核镜像
-	efiURL  = "https://boot.ipxe.org/ipxe.efi"  // UEFI x64
+	lkrnURLs = []string{
+		"https://boot.ipxe.org/ipxe.lkrn", // BIOS 可引导内核镜像
+	}
+	efiURLs = []string{
+		"https://boot.ipxe.org/x86_64-efi/ipxe.efi", // UEFI x64
+		"https://boot.ipxe.org/x86_64-efi/snponly.efi",
+	}
 )
 
 // Generate 生成引导 ISO 并返回其字节内容。
@@ -37,11 +43,11 @@ var (
 func Generate(tftpRoot string, p ipxe.BootISOParams) ([]byte, error) {
 	script := []byte(ipxe.AutoExec(p))
 
-	lkrn, err := fetchCached(filepath.Join(tftpRoot, "ipxe.lkrn"), lkrnURL)
+	lkrn, err := fetchCached(filepath.Join(tftpRoot, "ipxe.lkrn"), lkrnURLs)
 	if err != nil {
 		return nil, fmt.Errorf("获取 ipxe.lkrn 失败: %w", err)
 	}
-	efi, err := fetchCached(filepath.Join(tftpRoot, "ipxe.efi"), efiURL)
+	efi, err := fetchCached(filepath.Join(tftpRoot, "ipxe.efi"), efiURLs)
 	if err != nil {
 		return nil, fmt.Errorf("获取 ipxe.efi 失败: %w", err)
 	}
@@ -67,24 +73,38 @@ func Generate(tftpRoot string, p ipxe.BootISOParams) ([]byte, error) {
 	return b.Build(), nil
 }
 
-// fetchCached 若本地缓存存在则直接返回，否则下载并缓存。
-func fetchCached(path, url string) ([]byte, error) {
+// fetchCached 若本地缓存存在则直接返回，否则按候选 URL 顺序下载并缓存。
+func fetchCached(path string, urls []string) ([]byte, error) {
 	if data, err := os.ReadFile(path); err == nil && len(data) > 0 {
 		return data, nil
 	}
 	client := &http.Client{Timeout: 120 * time.Second}
+	var lastErr error
+	for _, url := range urls {
+		data, err := fetchURL(client, url)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		_ = os.WriteFile(path, data, 0o644)
+		return data, nil
+	}
+	return nil, lastErr
+}
+
+// fetchURL 下载单个 URL 的内容。
+func fetchURL(client *http.Client, url string) ([]byte, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP %d %s", resp.StatusCode, url)
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	_ = os.WriteFile(path, data, 0o644)
 	return data, nil
 }

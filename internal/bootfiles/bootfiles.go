@@ -13,19 +13,34 @@ import (
 	"time"
 )
 
-// file 表示需准备的引导文件及其下载源。
+// file 表示需准备的引导文件及其候选下载源（按顺序尝试）。
 type file struct {
 	name string
-	url  string
+	urls []string
 }
 
 // 官方 iPXE 预编译二进制（boot.ipxe.org）与 wimboot（ipxe.org）。
+// boot.ipxe.org 的 EFI 二进制位于各架构子目录下（根目录无 ipxe.efi），
+// 因此提供多个候选路径以增强兼容性。
 var files = []file{
-	{"undionly.kpxe", "https://boot.ipxe.org/undionly.kpxe"},   // BIOS PXE
-	{"ipxe.efi", "https://boot.ipxe.org/ipxe.efi"},             // UEFI x64
-	{"ipxe32.efi", "https://boot.ipxe.org/ipxe32.efi"},         // UEFI ia32
-	{"ipxe-arm64.efi", "https://boot.ipxe.org/arm64-efi/snponly.efi"}, // UEFI arm64
-	{"wimboot", "https://github.com/ipxe/wimboot/releases/latest/download/wimboot"}, // Windows 引导
+	{"undionly.kpxe", []string{
+		"https://boot.ipxe.org/undionly.kpxe",
+	}}, // BIOS PXE
+	{"ipxe.efi", []string{
+		"https://boot.ipxe.org/x86_64-efi/ipxe.efi",
+		"https://boot.ipxe.org/x86_64-efi/snponly.efi",
+	}}, // UEFI x64
+	{"ipxe32.efi", []string{
+		"https://boot.ipxe.org/i386-efi/ipxe.efi",
+		"https://boot.ipxe.org/i386-efi/snponly.efi",
+	}}, // UEFI ia32
+	{"ipxe-arm64.efi", []string{
+		"https://boot.ipxe.org/arm64-efi/snponly.efi",
+		"https://boot.ipxe.org/arm64-efi/ipxe.efi",
+	}}, // UEFI arm64
+	{"wimboot", []string{
+		"https://github.com/ipxe/wimboot/releases/latest/download/wimboot",
+	}}, // Windows 引导
 }
 
 // Ensure 确保引导文件就位，缺失则下载。
@@ -39,11 +54,20 @@ func Ensure(tftpRoot string) error {
 		if fi, err := os.Stat(dst); err == nil && fi.Size() > 0 {
 			continue // 已存在
 		}
-		if err := download(client, f.url, dst); err != nil {
-			log.Printf("[bootfiles] 下载 %s 失败: %v", f.name, err)
-			continue
+		var lastErr error
+		ok := false
+		for _, u := range f.urls {
+			if err := download(client, u, dst); err != nil {
+				lastErr = err
+				continue
+			}
+			log.Printf("[bootfiles] 已下载 %s (来源 %s)", f.name, u)
+			ok = true
+			break
 		}
-		log.Printf("[bootfiles] 已下载 %s", f.name)
+		if !ok {
+			log.Printf("[bootfiles] 下载 %s 失败: %v（可手动放置到 %s）", f.name, lastErr, tftpRoot)
+		}
 	}
 	return nil
 }
