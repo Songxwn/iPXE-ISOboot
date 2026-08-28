@@ -30,6 +30,6 @@ jobs:
             "darwin/amd64" "darwin/arm64"; do
             os="${target%/*}"; arch="${target#*/}"
             echo "==> building $os/$arch"
-            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /tmp/ipxe-isoboot ./...
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /tmp/ipxe-isoboot .
           done
           echo "所有平台编译通过"
