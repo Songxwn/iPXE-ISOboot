@@ -117,6 +117,7 @@ sudo systemctl status ipxe-isoboot
 | `windows` | wimboot 引导 WinPE/安装镜像 | wimboot、bootmgr、BCD、boot.sdi、boot.wim |
 | `esxi` | VMware ESXi multiboot | mboot.c32/mboot.efi、boot.cfg |
 | `sanboot` | iPXE 直挂 ISO | ISO URL |
+| `memdisk` | 整个 ISO 下载到内存当虚拟光驱（**仅 BIOS**） | ISO URL |
 | `custom` | 自定义 iPXE 脚本片段 | 原始脚本 |
 
 ### Linux 内核参数示例
@@ -159,6 +160,32 @@ boot
 > - 或用 HTTP 提供 ISO，WinPE 中用脚本挂载。
 >
 > 若只需 WinPE 环境（维护/PE 工具），到这一步即可使用。
+
+## 加载到内存启动
+
+有两种方式，覆盖 UEFI 与 BIOS：
+
+**1. Linux `toram`（推荐，UEFI/BIOS 通用）**
+在 `linux` 类型菜单项勾选 **“加载到内存运行 (toram)”**，并填写“发行版”。系统启动后会把
+自身复制进内存，之后不再依赖网络/服务器。程序按发行版自动追加参数：
+
+| 发行版 | 追加参数 |
+|--------|---------|
+| Ubuntu / Debian(live) | `toram` |
+| RHEL / Rocky / Alma / Fedora | `rd.live.ram=1` |
+| Arch | `copytoram=y` |
+| openSUSE | `toram` |
+
+> 需要该 live 系统本身支持 toram（绝大多数 live ISO 支持；纯 netinst 安装器不适用）。
+
+**2. memdisk 整盘入内存（仅 BIOS）**
+新增 `memdisk` 类型：把**整个 ISO** 下载到内存模拟成虚拟光驱，适合工具盘、小型/老式 ISO。
+- ✅ 完全脱离网络运行、可装机后移除介质
+- ❌ **仅传统 BIOS**（memdisk 是 BIOS-only；UEFI 下会提示改用 toram 方式）
+- ❌ 需要与 ISO 等量的内存；大镜像不适用
+
+memdisk 文件会在启动时优先从本机 syslinux 安装路径复制（`apt install syslinux-common`），
+否则尝试联网下载到 `data/tftp/memdisk`。
 
 ## 选择 DHCP 监听网卡
 
