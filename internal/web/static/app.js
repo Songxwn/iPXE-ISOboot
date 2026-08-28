@@ -63,7 +63,7 @@ async function loadStatus() {
       ['服务器 IP', s.server_ip || '(自动探测)'],
       ['HTTP 端口', s.http_port],
       ['TFTP 端口', s.tftp_port],
-      ['ProxyDHCP', s.enable_proxy_dhcp ? '已启用' : '已禁用'],
+      ['ProxyDHCP', s.dhcp_running ? '运行中' : (s.enable_proxy_dhcp ? '已启用(未运行)' : '已关闭')],
       ['引导脚本 URL', s.boot_script_url],
     ];
     document.getElementById('statusCards').innerHTML = cards.map(

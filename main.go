@@ -89,18 +89,16 @@ func main() {
 		}
 	}()
 
-	// ProxyDHCP
+	// ProxyDHCP（默认关闭，按配置决定是否启动；可在 Web 控制台动态启停）
+	dhcpMgr := proxydhcp.NewManager(cfg)
 	if cfg.EnableProxyDHCP {
-		go func() {
-			ps := proxydhcp.New(cfg)
-			if err := ps.Serve(); err != nil {
-				log.Printf("[proxydhcp] 启动失败（端口 67 可能需要管理员权限）: %v", err)
-			}
-		}()
+		dhcpMgr.Start()
+	} else {
+		log.Printf("[proxydhcp] 未启用（可在 Web 控制台开启）")
 	}
 
 	// HTTP / Web 控制台
-	ws := web.New(cfg, mstore)
+	ws := web.New(cfg, mstore, dhcpMgr)
 	srv := &http.Server{
 		Addr:    ":" + itoa(cfg.HTTPPort),
 		Handler: ws.Handler(),

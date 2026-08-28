@@ -9,6 +9,7 @@ import (
 
 	"ipxe-isoboot/internal/config"
 	"ipxe-isoboot/internal/menu"
+	"ipxe-isoboot/internal/proxydhcp"
 )
 
 //go:embed static/*
@@ -16,14 +17,15 @@ var staticFS embed.FS
 
 // Server 聚合 HTTP 相关依赖。
 type Server struct {
-	cfg   *config.Config
-	menu  *menu.Store
-	mux   *http.ServeMux
+	cfg     *config.Config
+	menu    *menu.Store
+	dhcpMgr *proxydhcp.Manager
+	mux     *http.ServeMux
 }
 
 // New 创建 Web 服务。
-func New(cfg *config.Config, m *menu.Store) *Server {
-	s := &Server{cfg: cfg, menu: m, mux: http.NewServeMux()}
+func New(cfg *config.Config, m *menu.Store, dhcpMgr *proxydhcp.Manager) *Server {
+	s := &Server{cfg: cfg, menu: m, dhcpMgr: dhcpMgr, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }

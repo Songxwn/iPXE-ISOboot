@@ -42,7 +42,7 @@ func Default(dataDir string) *Config {
 		ServerIP:           "",
 		HTTPPort:           8081,
 		TFTPPort:           69,
-		EnableProxyDHCP:    true,
+		EnableProxyDHCP:    false, // 默认关闭，需在 Web 控制台显式开启
 		DHCPInterface:      "",
 		AdminUser:          "admin",
 		AdminPass:          "admin",

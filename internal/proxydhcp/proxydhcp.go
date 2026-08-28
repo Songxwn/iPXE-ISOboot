@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
+	"sync/atomic"
 
 	"ipxe-isoboot/internal/config"
 	"ipxe-isoboot/internal/netif"
@@ -52,12 +53,21 @@ const (
 
 // Server 是 ProxyDHCP 服务。
 type Server struct {
-	cfg  *config.Config
-	conn *net.UDPConn
-	ifc  *net.Interface // 选定的网卡（nil 表示全部）
+	cfg    *config.Config
+	conn   *net.UDPConn
+	ifc    *net.Interface // 选定的网卡（nil 表示全部）
+	closed atomic.Bool    // 是否已请求停止
 }
 
 func New(cfg *config.Config) *Server { return &Server{cfg: cfg} }
+
+// Stop 停止服务：关闭监听套接字以中断阻塞的读取循环。
+func (s *Server) Stop() {
+	s.closed.Store(true)
+	if s.conn != nil {
+		s.conn.Close()
+	}
+}
 
 // bootFileFor 根据架构与是否已运行 iPXE 决定下发的文件名。
 //
@@ -105,6 +115,10 @@ func (s *Server) Serve() error {
 	for {
 		n, raddr, err := conn.ReadFromUDP(buf)
 		if err != nil {
+			if s.closed.Load() {
+				log.Printf("[proxydhcp] 已停止")
+				return nil
+			}
 			log.Printf("[proxydhcp] 读取错误: %v", err)
 			continue
 		}

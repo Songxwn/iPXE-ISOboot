@@ -53,11 +53,16 @@ func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/status
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	dhcpRunning := false
+	if s.dhcpMgr != nil {
+		dhcpRunning = s.dhcpMgr.Running()
+	}
 	writeJSON(w, map[string]any{
 		"server_ip":         s.cfg.ServerIP,
 		"http_port":         s.cfg.HTTPPort,
 		"tftp_port":         s.cfg.TFTPPort,
 		"enable_proxy_dhcp": s.cfg.EnableProxyDHCP,
+		"dhcp_running":      dhcpRunning,
 		"base_url":          s.baseURL(r),
 		"boot_script_url":   s.baseURL(r) + "/boot.ipxe",
 	})
@@ -95,6 +100,10 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		if err := config.Save(s.cfg); err != nil {
 			http.Error(w, err.Error(), 500)
 			return
+		}
+		// 按最新配置应用 ProxyDHCP 启停（含网卡变更时重启生效）
+		if s.dhcpMgr != nil {
+			s.dhcpMgr.Apply()
 		}
 		writeJSON(w, map[string]any{"ok": true})
 		return
