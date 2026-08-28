@@ -1,0 +1,17 @@
+# 编译产物
+/dist/
+*.exe
+ipxe-isoboot
+ipxe-isoboot-*
+
+# 运行时数据
+/data/
+
+# 临时
+*.tmp
+*.log
+
+# 编辑器
+.idea/
+.vscode/
+.DS_Store
