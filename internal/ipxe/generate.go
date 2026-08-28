@@ -9,7 +9,7 @@ import (
 
 // BootContext 提供生成脚本所需的服务器信息。
 type BootContext struct {
-	BaseURL string // 形如 http://192.168.1.10:8080
+	BaseURL string // 形如 http://192.168.1.10:8081
 	Timeout int    // 菜单超时秒数
 	Default string // 默认项 ID
 }

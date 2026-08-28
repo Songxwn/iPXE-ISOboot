@@ -12,31 +12,90 @@
 
 ## 快速开始
 
-### 1. 下载
+### 1. Linux 一键部署（curl 从 Releases 下载）
 
-从 [Releases](../../releases) 下载对应平台的二进制，或自行编译：
+在 Linux 服务器上直接从 [Releases](../../releases) 下载对应架构的二进制。以下命令自动识别 amd64/arm64/arm 架构并下载最新版：
 
 ```bash
-go build -o ipxe-isoboot .
+# 自动识别架构并下载最新版到 /usr/local/bin/ipxe-isoboot
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)  GOARCH=amd64 ;;
+  aarch64) GOARCH=arm64 ;;
+  armv7l)  GOARCH=arm   ;;
+  *) echo "不支持的架构: $ARCH"; exit 1 ;;
+esac
+
+# 取最新版本号
+VER=$(curl -fsSL https://api.github.com/repos/Songxwn/iPXE-ISOboot/releases/latest \
+      | grep -oP '"tag_name":\s*"\K[^"]+')
+
+# 下载并安装
+sudo curl -fL -o /usr/local/bin/ipxe-isoboot \
+  "https://github.com/Songxwn/iPXE-ISOboot/releases/download/${VER}/ipxe-isoboot_${VER}_linux_${GOARCH}"
+sudo chmod +x /usr/local/bin/ipxe-isoboot
+ipxe-isoboot -version
 ```
+
+只想下载固定版本（例如 v1.0.0，amd64）：
+
+```bash
+sudo curl -fL -o /usr/local/bin/ipxe-isoboot \
+  https://github.com/Songxwn/iPXE-ISOboot/releases/download/v1.0.0/ipxe-isoboot_v1.0.0_linux_amd64
+sudo chmod +x /usr/local/bin/ipxe-isoboot
+```
+
+> 也可自行编译：`go build -o ipxe-isoboot .`
 
 ### 2. 运行
 
+默认 HTTP 控制台端口为 **8081**。
+
 ```bash
 # Linux（需要 root 以监听 67/69 特权端口）
-sudo ./ipxe-isoboot -data ./data -http 8080
+sudo ipxe-isoboot -data /opt/ipxe-isoboot/data
+
+# 指定端口（覆盖默认 8081）
+sudo ipxe-isoboot -data /opt/ipxe-isoboot/data -http 8081
 
 # Windows（以管理员身份运行）
-ipxe-isoboot.exe -data .\data -http 8080
+ipxe-isoboot.exe -data .\data
 ```
 
 首次运行会：
 - 创建 `data/` 目录（`iso/`、`tftp/`、`extract/`）
 - 自动尝试从 `boot.ipxe.org` 下载 iPXE 引导文件到 `data/tftp/`（无外网时可手动放置）
 
+#### 注册为 systemd 服务（可选，开机自启）
+
+```bash
+sudo mkdir -p /opt/ipxe-isoboot/data
+sudo tee /etc/systemd/system/ipxe-isoboot.service >/dev/null <<'EOF'
+[Unit]
+Description=iPXE-ISOboot PXE 网络装机服务
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ipxe-isoboot -data /opt/ipxe-isoboot/data -http 8081
+Restart=on-failure
+# 允许非 root 绑定 67/69 特权端口（或直接以 root 运行去掉此行）
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now ipxe-isoboot
+sudo systemctl status ipxe-isoboot
+```
+
 ### 3. 打开控制台
 
-浏览器访问 `http://<服务器IP>:8080`，默认账号 **admin / admin**（请在“设置”中修改）。
+浏览器访问 `http://<服务器IP>:8081`，默认账号 **admin / admin**（请在“设置”中修改）。
+
+> 若使用云服务器/防火墙，记得放行 TCP `8081`（控制台/HTTP）、UDP `69`（TFTP）、UDP `67`（ProxyDHCP，同内网二层才有意义）。
 
 ## 使用流程
 
@@ -63,13 +122,13 @@ ipxe-isoboot.exe -data .\data -http 8080
 不同发行版通过不同参数指向 ISO 源（HTTP）。例如 Ubuntu：
 
 ```
-boot=casper url=http://<IP>:8080/files/iso/ubuntu.iso ip=dhcp ---
+boot=casper url=http://<IP>:8081/files/iso/ubuntu.iso ip=dhcp ---
 ```
 
 CentOS/Rocky：
 
 ```
-inst.repo=http://<IP>:8080/files/iso/rocky.iso ip=dhcp
+inst.repo=http://<IP>:8081/files/iso/rocky.iso ip=dhcp
 ```
 
 ## 命令行参数
@@ -90,11 +149,11 @@ inst.repo=http://<IP>:8080/files/iso/rocky.iso ip=dhcp
    ▼
 [ProxyDHCP :67]  读取 Option 93(架构) 与 User-Class
    │  裸固件  → 下发 iPXE 二进制（经 TFTP）
-   │  已是iPXE → 下发 http://<IP>:8080/boot.ipxe
+   │  已是iPXE → 下发 http://<IP>:8081/boot.ipxe
    ▼
 [TFTP :69]   下发 undionly.kpxe / ipxe.efi / wimboot ...
    ▼
-[HTTP :8080] /boot.ipxe 动态菜单；/files/ 提供内核/initrd/wim/ISO
+[HTTP :8081] /boot.ipxe 动态菜单；/files/ 提供内核/initrd/wim/ISO
    ▼
 [Web 控制台] 上传、分析、提取、编辑菜单
 ```

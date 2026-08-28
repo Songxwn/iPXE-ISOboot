@@ -3,7 +3,7 @@
 // 集成 ProxyDHCP + TFTP + HTTP(Web 控制台)，支持 Linux 各发行版、
 // Windows、VMware ESXi 的 ISO 网络启动装机；支持 UEFI 与传统 BIOS。
 //
-// 使用：./ipxe-isoboot -data ./data -http 8080
+// 使用：./ipxe-isoboot -data ./data -http 8081
 // 首次运行会创建 data 目录并尝试下载 iPXE 引导文件到 data/tftp。
 package main
 

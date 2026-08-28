@@ -39,7 +39,7 @@ var (
 func Default(dataDir string) *Config {
 	return &Config{
 		ServerIP:           "",
-		HTTPPort:           8080,
+		HTTPPort:           8081,
 		TFTPPort:           69,
 		EnableProxyDHCP:    true,
 		AdminUser:          "admin",
