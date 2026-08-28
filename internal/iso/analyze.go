@@ -72,7 +72,23 @@ func Analyze(path string) (*Info, error) {
 		return false
 	}
 
+	vol := strings.ToLower(r.VolumeID())
 	info := &Info{Files: files}
+
+	// Windows 专项兜底：安装 ISO 常用 UDF，ISO9660/Joliet 下文件可能读不全，
+	// 因此除标记外，再用 bootmgr / sources/install / 卷标关键词判定。
+	winByFile := hasSub("bootmgr") || hasSub("/sources/install") || hasSub("/sources/boot.wim")
+	winByVol := strings.Contains(vol, "windows") || strings.Contains(vol, "cccoma") ||
+		strings.Contains(vol, "cpba") || strings.Contains(vol, "ccsa") ||
+		strings.Contains(vol, "cena") || strings.Contains(vol, "sss_x64") ||
+		strings.Contains(vol, "j_ccsa") || strings.Contains(vol, "server")
+	if winByFile || winByVol {
+		info.Family, info.Distro, info.Display = FamilyWindows, "windows", "Windows"
+		info.Note = "Windows 安装镜像（卷标: " + r.VolumeID() + "）。" +
+			"注意：Windows 无法通过网络 GRUB loopback 引导安装器，需用 wimboot + WinPE 方式，或改用其它工具。"
+		return info, nil
+	}
+
 	for _, rl := range rules {
 		ok := true
 		for _, m := range rl.markers {
@@ -91,7 +107,21 @@ func Analyze(path string) (*Info, error) {
 	// 兜底：通用族，尝试 ISO 内 grub.cfg / isolinux
 	info.Family = FamilyGeneric
 	info.Distro = "linux"
-	info.Display = "Generic ISO"
+	info.Display = "Generic ISO (卷标: " + r.VolumeID() + ", 文件数: " + itoa(len(files)) + ")"
 	info.Note = "未精确识别：通用 loopback 引导，尝试 ISO 内 /boot/grub/grub.cfg。"
 	return info, nil
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b [20]byte
+	p := len(b)
+	for n > 0 {
+		p--
+		b[p] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(b[p:])
 }

@@ -17,7 +17,11 @@ type Reader struct {
 	rootLBA  uint32
 	rootSize uint32
 	joliet   bool
+	volID    string // 卷标 (volume identifier)
 }
+
+// VolumeID 返回卷标。
+func (r *Reader) VolumeID() string { return r.volID }
 
 // Open 打开 ISO 并定位根目录（优先 Joliet）。
 func Open(path string) (*Reader, error) {
@@ -41,6 +45,7 @@ func Open(path string) (*Reader, error) {
 			i = 100
 		case 1:
 			pLBA, pSize = le32(sector[158:162]), le32(sector[166:170])
+			r.volID = strings.TrimSpace(string(sector[40:72]))
 			found = true
 		case 2:
 			esc := string(sector[88:91])
