@@ -48,6 +48,7 @@ document.querySelectorAll('nav a').forEach(a => {
     if (a.dataset.tab === 'preview') loadPreview();
     if (a.dataset.tab === 'menu') loadMenu();
     if (a.dataset.tab === 'isos') loadISOs();
+    if (a.dataset.tab === 'bootiso') loadBootISOTools();
   };
 });
 
@@ -81,6 +82,7 @@ async function loadISOs() {
         <td>${f.name}</td>
         <td>${fmtSize(f.size)}</td>
         <td>
+          <button class="sm" onclick="quickAdd('${f.name}')">一键加入菜单</button>
           <button class="sm" onclick="analyzeISO('${f.name}')">分析</button>
           <button class="sm danger" onclick="deleteISO('${f.name}')">删除</button>
         </td>
@@ -190,6 +192,16 @@ function uploadISO() {
   };
   xhr.onerror = () => { status.textContent = '上传错误'; };
   xhr.send(fd);
+}
+
+async function quickAdd(name) {
+  try {
+    const r = await api('/api/quick-add', { method: 'POST', body: JSON.stringify({ name }) });
+    alert('已加入启动菜单：' + r.entry.title + '（类型 ' + r.entry.type + '）');
+    loadMenu();
+  } catch (e) {
+    alert('加入失败：' + e.message);
+  }
 }
 
 async function deleteISO(name) {
@@ -335,6 +347,24 @@ async function deleteEntry(id) {
 }
 
 // ---- 引导 ISO 生成 ----
+async function loadBootISOTools() {
+  const box = document.getElementById('biToolStatus');
+  try {
+    const t = await api('/api/bootiso-tools');
+    if (t.ok) {
+      box.innerHTML = '<div class="card" style="border-color:var(--ok)">工具链就绪：xorriso / mtools / isolinux 均可用</div>';
+    } else {
+      const miss = [];
+      if (!t.xorriso) miss.push('xorriso');
+      if (!t.mformat || !t.mcopy) miss.push('mtools');
+      if (!t.isolinux) miss.push('isolinux');
+      box.innerHTML = '<div class="card" style="border-color:var(--err)">' +
+        '<b>缺少工具：' + miss.join(', ') + '</b><br><pre style="margin-top:8px">' +
+        (t.hint || '') + '</pre></div>';
+    }
+  } catch (e) { box.innerHTML = ''; }
+}
+
 function onBiModeChange() {
   const m = document.getElementById('biIPMode').value;
   document.getElementById('biStatic').classList.toggle('hidden', m !== 'static');

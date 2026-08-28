@@ -78,6 +78,7 @@
       <h2>生成自定义 iPXE 引导 ISO</h2>
       <p class="muted">用于无法配置 PXE/DHCP 的环境：把生成的小 ISO 刻盘或写入 U 盘/挂载到虚拟机，
         目标机器启动后 iPXE 会按下述配置联网并自动连接本服务器菜单。支持 UEFI 与传统 BIOS。</p>
+      <div id="biToolStatus"></div>
       <div class="form" style="max-width:640px">
         <label>连接目标 (chain URL)
           <input id="biChain" placeholder="留空则默认 http://本机:8081/boot.ipxe">

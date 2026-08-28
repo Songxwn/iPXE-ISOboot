@@ -53,8 +53,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/upload", s.auth(s.handleUpload))     // POST 上传 ISO
 	s.mux.HandleFunc("/api/analyze", s.auth(s.handleAnalyze))   // POST 分析 ISO
 	s.mux.HandleFunc("/api/extract", s.auth(s.handleExtract))   // POST 提取 ISO 内文件
+	s.mux.HandleFunc("/api/quick-add", s.auth(s.handleQuickAdd)) // POST 一键加入启动菜单
 	s.mux.HandleFunc("/api/delete-iso", s.auth(s.handleDeleteISO))
 	s.mux.HandleFunc("/api/preview", s.auth(s.handlePreview))   // GET 预览生成的 iPXE 脚本
+	s.mux.HandleFunc("/api/bootiso-tools", s.auth(s.handleBootISOTools))    // GET 工具链状态
 	s.mux.HandleFunc("/api/gen-boot-iso", s.auth(s.handleGenBootISO))       // POST 生成引导 ISO
 	s.mux.HandleFunc("/api/preview-autoexec", s.auth(s.handlePreviewAutoexec)) // POST 预览 autoexec
 }

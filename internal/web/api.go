@@ -289,6 +289,131 @@ func (s *Server) handleExtract(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": true, "paths": extracted})
 }
 
+// POST /api/quick-add {"name":"x.iso"}
+// 一键把 ISO 加入启动菜单：自动分析类型、提取引导文件、创建菜单项。
+func (s *Server) handleQuickAdd(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad json", 400)
+		return
+	}
+	name := sanitizeName(req.Name)
+	path := filepath.Join(s.cfg.ISODir(), name)
+	info, err := iso.Analyze(path)
+	if err != nil {
+		http.Error(w, "分析失败: "+err.Error(), 500)
+		return
+	}
+
+	dest := strings.TrimSuffix(name, filepath.Ext(name))
+	isoURL := "/files/iso/" + name
+	title := dest
+
+	e := &menu.Entry{
+		ID:      slug(dest),
+		Title:   title,
+		Enabled: true,
+		Order:   len(s.menu.List()),
+		ISOName: name,
+	}
+
+	switch info.Kind {
+	case iso.KindLinux:
+		// 提取内核与 initrd 到 extract/<dest>/
+		extracted, err := s.extractFiles(path, dest, []string{info.Kernel, info.Initrd})
+		if err != nil || info.Kernel == "" {
+			// 提取失败则退回 sanboot 直挂
+			e.Type = menu.TypeSanBoot
+			e.SanURL = isoURL
+			e.Title = title + " (直挂 ISO)"
+			break
+		}
+		e.Type = menu.TypeLinux
+		e.Kernel = extracted[info.Kernel]
+		if p, ok := extracted[info.Initrd]; ok {
+			e.Initrd = p
+		}
+		// 通用内核参数：多数发行版可用 ISO 的 HTTP URL 作为源
+		e.Append = linuxAppend(info.Distro, s.baseURL(r)+isoURL)
+
+	case iso.KindWindows:
+		// Windows：以 sanboot 直挂 ISO（最省事，兼容性好）
+		e.Type = menu.TypeSanBoot
+		e.SanURL = isoURL
+		e.Title = title + " (Windows)"
+
+	case iso.KindESXi:
+		e.Type = menu.TypeSanBoot
+		e.SanURL = isoURL
+		e.Title = title + " (ESXi)"
+
+	default:
+		e.Type = menu.TypeSanBoot
+		e.SanURL = isoURL
+		e.Title = title + " (直挂 ISO)"
+	}
+
+	if e.ID == "" {
+		e.ID = "iso" + itoaLen(len(s.menu.List())+1)
+	}
+	if err := s.menu.Put(e); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	writeJSON(w, map[string]any{"ok": true, "entry": e, "kind": string(info.Kind)})
+}
+
+// extractFiles 提取 ISO 内多个文件，返回 ISO内路径 -> HTTP路径 的映射。
+func (s *Server) extractFiles(isoPath, dest string, files []string) (map[string]string, error) {
+	rd, err := iso.Open(isoPath)
+	if err != nil {
+		return nil, err
+	}
+	defer rd.Close()
+	base := filepath.Join(s.cfg.ExtractDir(), dest)
+	os.MkdirAll(base, 0o755)
+	out := map[string]string{}
+	for _, fp := range files {
+		if fp == "" {
+			continue
+		}
+		e, err := rd.Find(fp)
+		if err != nil {
+			continue
+		}
+		dst := filepath.Join(base, filepath.FromSlash(strings.TrimPrefix(fp, "/")))
+		os.MkdirAll(filepath.Dir(dst), 0o755)
+		of, err := os.Create(dst)
+		if err != nil {
+			continue
+		}
+		rd.Extract(e, of)
+		of.Close()
+		out[fp] = "/files/extract/" + dest + "/" + strings.TrimPrefix(strings.ReplaceAll(fp, "\\", "/"), "/")
+	}
+	return out, nil
+}
+
+// linuxAppend 依据发行版给出常见的网络安装内核参数。
+func linuxAppend(distro, isoURL string) string {
+	switch distro {
+	case "ubuntu":
+		return "boot=casper url=" + isoURL + " ip=dhcp ---"
+	case "debian":
+		return "url=" + isoURL + " ip=dhcp ---"
+	case "centos", "rocky", "almalinux", "fedora":
+		return "inst.repo=" + isoURL + " ip=dhcp"
+	case "opensuse":
+		return "install=" + isoURL + " ip=dhcp"
+	case "alpine":
+		return "ip=dhcp alpine_repo=" + isoURL
+	default:
+		return "ip=dhcp"
+	}
+}
+
 // POST /api/delete-iso {"name":"x.iso"}
 func (s *Server) handleDeleteISO(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -347,6 +472,11 @@ func (s *Server) handleGenBootISO(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="ipxe-boot.iso"`)
 	w.Header().Set("Content-Length", itoaLen(len(data)))
 	w.Write(data)
+}
+
+// GET /api/bootiso-tools —— 返回生成引导 ISO 所需工具链的可用状态。
+func (s *Server) handleBootISOTools(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, bootiso.CheckTools())
 }
 
 // POST /api/preview-autoexec —— 预览将嵌入引导 ISO 的 autoexec.ipxe。

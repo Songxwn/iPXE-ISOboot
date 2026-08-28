@@ -157,6 +157,25 @@ inst.repo=http://<IP>:8081/files/iso/rocky.iso ip=dhcp
 
 > 首次生成会自动从 `boot.ipxe.org` 下载 `ipxe.lkrn` 与 `ipxe.efi` 并缓存到 `data/tftp/`。
 
+**依赖工具（服务器需安装）**：生成真正可引导的双启动 ISO 使用与 iPXE 官方相同的工具链，请先安装：
+
+```bash
+# Debian / Ubuntu
+sudo apt-get install -y xorriso mtools isolinux syslinux-common
+
+# RHEL / Rocky / AlmaLinux
+sudo dnf install -y xorriso mtools syslinux
+```
+
+“引导 ISO”页顶部会显示工具链是否就绪；缺失时会给出安装提示。
+
+## 一键加入启动菜单
+
+在“ISO 管理”页每个 ISO 都有 **一键加入菜单** 按钮：自动分析镜像类型并创建启动项——
+- Linux：自动提取内核/initrd 并填入常见网络安装参数
+- Windows / ESXi / 无法识别：以 `sanboot` 直挂 ISO
+随后可在“启动菜单”中进一步微调。
+
 ## 命令行参数
 
 ```
